@@ -1,3 +1,5 @@
+// parsing
+
 let makeWordCountArray = () =>
     mapToSortedArray(
         [...document.querySelectorAll("*")].reduce((map, el) => {
@@ -28,46 +30,63 @@ let mapToSortedArray = (map) =>
         )
 
 let makeLinksArray = () =>
-    [...document.querySelectorAll("a")].map(el => el.href)
+    mapToSortedArray(
+        [...document.querySelectorAll("a")].reduce((linksMap, el) => {
+            if (linksMap[el.href] !== undefined) {
+                linksMap[el.href] += 1
+            } else {
+                linksMap[el.href] = 1
+            }
+            return linksMap
+        }, {})
+    )
 
 let makeBackgroundImagesArray = () =>
-    [...document.querySelectorAll("*")].reduce((links, el) => {
-        let computed = window.getComputedStyle(el)
-        if (typeof computed.backgroundImage === "string") {
-            Array.from(
-                computed.backgroundImage.matchAll(/url\("(.*?)"\)/g),
-                matches => matches.forEach((match, i) => {
-                    if (i !== 0) {
-                        links.push(match)
-                    }
-                })
-            )
-        }
-        return links
-    }, [])
+    mapToSortedArray(
+        [...document.querySelectorAll("*")].reduce((linksMap, el) => {
+            let computed = window.getComputedStyle(el)
+            if (typeof computed.backgroundImage === "string") {
+                Array.from(
+                    computed.backgroundImage.matchAll(/url\("(.*?)"\)/g),
+                    matches => matches.forEach((match, i) => {
+                        if (i !== 0) {
+                            if (linksMap[match] !== undefined) {
+                                linksMap[match] += 1
+                            } else {
+                                linksMap[match] = 1
+                            }
+                        }
+                    })
+                )
+            }
+            return linksMap
+        }, {})
+    )
+
+// html
 
 let createDiv = () =>
     document.createElement("div")
 
-let wordCountHtml = (words) =>
-    `<h1 style="${h1Style()}">Word Count</h1>
-    <table style="${wordCountTableStyle()}">
+let countTableHtml = (items, header, itemName) =>
+    header
+    + `<table style="${tableStyle()}">
         <tr>
-            <th style="${wordCountThStyle()}">
-                Word
+            <th style="${thStyle()}">
+                ${itemName}
             </th>
-            <th style="${wordCountThStyle()}">
+            <th style="${thStyle()}">
                 Count
             </th>
         </tr>`
-        + words.reduce((html, word) => {
+        + items.reduce((html, item) => {
             html += `
-                    <tr style="${wordCountTrTdStyle()}">
-                        <td style="${wordCountTrTdStyle()}">
-                            ${word[0]}
+                    <tr style="${trTdStyle()}">
+                        <td style="${trTdStyle()}">
+                            ${item[0]}
                         </td>
-                        <td style="${wordCountTrTdStyle()}">
-                            ${word[1]}
+                        <td style="${trTdStyle()}">
+                            ${item[1]}
                         </td>
                     </tr>
                 `
@@ -75,24 +94,53 @@ let wordCountHtml = (words) =>
         }, "")
     + `</table>`
 
+let wordsHtml = (words) =>
+    countTableHtml(words, wordsHeader(), "Word")
+
+let wordsHeader = () =>
+    `<h1 style="${h1Style()}">Word Count</h1>`
+
+let linksHtml = (links) =>
+    countTableHtml(links, linksHeader(), "Link")
+
+let linksHeader = () =>
+    `<h1 style="${h1Style()}">Links</h1>`
+
+let imagesHtml = (images) =>
+    countTableHtml(
+        images.map(img => [imgHtml(img[0]), img[1]]),
+        imagesHeader(),
+        "Image"
+    )
+
+let imgHtml = (img) =>
+    `<img src="${img}" style="${imgStyle()}"/>`
+
+let imagesHeader = () =>
+    `<h1 style="${h1Style()}">Images</h1>`
+
+// style
+
 let h1Style = () =>
     `
         text-align: center;
+        color: white;
     `
 
-let wordCountTableStyle = () =>
+let tableStyle = () =>
     `
         border: 1px solid black;
         border-collapse: collapse;
+        color: white;
     `
 
-let wordCountTrTdStyle = () =>
+let trTdStyle = () =>
     `
         border: 1px solid black;
     `
 
-let wordCountThStyle = () =>
-    wordCountTrTdStyle() + `
+let thStyle = () =>
+    trTdStyle() + `
         font-weight: bold;
     `
 
@@ -100,78 +148,41 @@ let singleBlockStyle = () =>
     `
         max-height: 1000px;
         overflow-y: auto;
-        box-shadow: black 0px 0px 10px;
+        box-shadow: black 0 0 10px;
         width: fit-content;
         margin: 20px 40px;
         padding: 20px;
         display: inline-block;
     `
 
-let wordCountStyle = () =>
-    singleBlockStyle()
-    + `
-        float: left;
+let imgStyle = () =>
+    `
+        height: 200px;
     `
 
-let linksStyle = () =>
-    singleBlockStyle()
-    + `
-        float: right;
+let mainElementStyle = () =>
     `
-
-let imagesBlockStyle = () =>
-    singleBlockStyle()
-    + `
-        width: 80%;
-        background: gray;
-        display: block;
-        margin: 20px auto;
+        background: #3c3c42;
+        height: auto;
+        width: auto;
+        min-height: 100%;
     `
-
-let linksHtml = (links) =>
-    `<h1 style="${h1Style()}">Links</h1>
-    <table>`
-    + links.reduce((html, link) => {
-        html += `
-                <tr>
-                    <td>
-                        ${link}
-                    </td>
-                </tr>
-            `
-        return html
-    }, "")
-    + "</table>"
-
-let imagesHtml = (images) =>
-    `<h1 style="${h1Style()}">Background Images</h1>`
-    + images.reduce((html, image) => {
-        html += `
-                <div>
-                    <img src="${image}"/>
-                </div>
-            `
-        return html
-    }, "")
 
 let main = () => {
 
-    let words = makeWordCountArray(),
-        links = makeLinksArray(),
-        images = makeBackgroundImagesArray(),
-
-        mainElement = createDiv(),
+    let mainElement = createDiv(),
         countElement = createDiv(),
         linksElement = createDiv(),
         imgElement = createDiv()
 
-    countElement.style = wordCountStyle()
-    linksElement.style = linksStyle()
-    imgElement.style = imagesBlockStyle()
+    mainElement.style = mainElementStyle()
+    countElement.style = singleBlockStyle()
+    linksElement.style = singleBlockStyle()
+    imgElement.style = singleBlockStyle()
 
-    countElement.innerHTML = wordCountHtml(words)
-    linksElement.innerHTML = linksHtml(links)
-    imgElement.innerHTML = imagesHtml(images)
+    countElement.innerHTML = wordsHtml( makeWordCountArray())
+    linksElement.innerHTML = linksHtml(makeLinksArray())
+    imgElement.innerHTML = imagesHtml(makeBackgroundImagesArray())
 
     mainElement.appendChild(countElement)
     mainElement.appendChild(linksElement)
